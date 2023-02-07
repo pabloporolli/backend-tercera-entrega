@@ -3,6 +3,7 @@ import session from 'express-session'
 import MongoStore from 'connect-mongo'
 import mongoose from "mongoose";
 import * as model from './models/users.js'
+import { fork } from 'child_process'
 
 import config from './config.js'
 
@@ -33,10 +34,10 @@ const advancedOptions = {
 
 // Passport-local
 passport.use(new LocalStrategy(
-    async function(username, password, done){
-        console.log(`El usuario enviado desde l 45 es ${username} ${password}`)
+    async function(email, password, done){
+        console.log(`El usuario enviado desde l 45 es ${email} ${password}`)
         // Existe usuario devuelve el objeto del usuario (con ObjectId de Mongo)
-        const existeUsuario = await model.usuarios.findOne({username: username})
+        const existeUsuario = await model.usuarios.findOne({email: email})
         console.log('Existe usuario: ' + existeUsuario)
 
         if(!existeUsuario){
@@ -67,18 +68,7 @@ passport.deserializeUser((nombre, done) => {
 
 
 // middleware session
-app.use(session({
-    store: MongoStore.create({
-        // local
-        mongoUrl: "mongodb://localhost/sesionesDesafio12"
-    }),
-    secret: 'secret',
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-        maxAge: 10000
-    }
-}))
+app.use(session(config.session))
 
 // Passport
 app.use(passport.initialize())
@@ -107,12 +97,12 @@ function isAuth(req,res,next){
 }
 
 // Mongo DB
+mongoose.set('strictQuery', false)
 const URL = 'mongodb://localhost:27017/usuarios'
-await mongoose.connect(URL, {
+mongoose.connect(URL, {
     useNewUrlParser: true,
     useUnifiedTopology: true
 })
-
 
 app.get('/', isAuth, (req,res) =>{
     const nombre = req.session.passport.user.username
@@ -172,6 +162,43 @@ app.get('/logout', (req, res) => {
     })
     
 })
+
+
+// PROCESS: Ruta info con datos del proceso
+app.get('/info', (req,res)=>{
+    const datos = {
+        argumentos: process.argv.slice(2),
+        plataforma: process.platform,
+        version: process.version,
+        rss: process.memoryUsage(),
+        path: process.execPath,
+        pid: process.pid,
+        carpeta: process.cwd()
+    }
+    res.send(datos)
+})
+
+// RUTA RANDOM
+function calcular(cant) {
+    return new Promise((resolve, reject) => {
+        const forked = fork(path.resolve(process.cwd(), './calcularRandoms.js'))
+
+        forked.on('message', mensaje => {
+            if (mensaje == 'ready') {
+                forked.send(cant)
+            } else {
+                resolve(mensaje)
+            }
+        })
+    })
+}
+
+app.get('/api/randoms', async (req, res) => {
+    const { cant = 100_000_000 } = req.query
+    const result = await calcular(cant)
+    res.json(result)
+})
+
 
 
 
