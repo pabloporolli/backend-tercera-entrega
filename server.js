@@ -13,6 +13,9 @@ const LocalStrategy = Strategy;
 
 import bcrypt from 'bcrypt'
 
+import cluster from 'cluster'
+import os from 'os'
+
 const app = express()
 
 import path from 'path';
@@ -173,7 +176,8 @@ app.get('/info', (req,res)=>{
         rss: process.memoryUsage(),
         path: process.execPath,
         pid: process.pid,
-        carpeta: process.cwd()
+        carpeta: process.cwd(),
+        procesadores: CPU_CORES
     }
     res.send(datos)
 })
@@ -199,9 +203,24 @@ app.get('/api/randoms', async (req, res) => {
     res.json(result)
 })
 
+// CLUSTER
+const CPU_CORES = os.cpus().length
+if (config.mode == 'CLUSTER' && cluster.isPrimary) {
+    console.log('Cantidade de cores: ', CPU_CORES)
+    
+    for (let i = 0; i < CPU_CORES; i++) {
+        cluster.fork()
+    }
+    
+    cluster.on('exit', worker => {
+        console.log(`Worker finalizó proceso ${process.pid} ${worker.id} ${worker.pid} finalizó el ${new Date().toLocaleString}`)
+        cluster.fork()
+    })
+} else {
+    app.listen(config.PORT, err => {
+        if (!err) console.log(`Servidor http escuchando en el puerto ${config.PORT} - PID: ${process.pid}`)
+    })
+}
 
 
 
-app.listen(config.PORT, () => {
-    console.log(`Servidor http escuchando en el puerto ${config.PORT}`)
-})
