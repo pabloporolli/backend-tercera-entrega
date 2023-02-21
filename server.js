@@ -4,6 +4,7 @@ import MongoStore from 'connect-mongo'
 import mongoose from "mongoose";
 import * as model from './models/users.js'
 import { fork } from 'child_process'
+import parseArgs from 'minimist'
 
 import config from './config.js'
 
@@ -16,6 +17,9 @@ import bcrypt from 'bcrypt'
 import cluster from 'cluster'
 import os from 'os'
 
+import compression from 'compression';
+import log4js from 'log4js';
+
 const app = express()
 
 import path from 'path';
@@ -26,6 +30,7 @@ const __dirname = path.dirname(__filename);
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
 app.use(express.static('public'))
+app.use(compression())
 
 app.set('views', './views/pages')
 app.set('view engine', 'ejs');
@@ -118,6 +123,7 @@ app.get('/logout', (req, res) => {
     req.session.destroy(err=>{
         if(err){
             res.json({status: 'Error al desloggearse', body: err})
+
         }
     })
 })
@@ -161,6 +167,7 @@ app.get('/logout', (req, res) => {
     req.session.destroy(err=>{
         if(err){
             res.json({status: 'Error al desloggearse', body: err})
+            loggerError.error('Error al desloguearse')
         }
     })
     
@@ -180,7 +187,26 @@ app.get('/info', (req,res)=>{
         procesadores: CPU_CORES
     }
     res.send(datos)
+    logger.info('Usuario accedio a la página info')
 })
+
+// Ruta info bloqueante
+app.get('/info-bloq', (req,res)=>{
+    const datos = {
+        argumentos: process.argv.slice(2),
+        plataforma: process.platform,
+        version: process.version,
+        rss: process.memoryUsage(),
+        path: process.execPath,
+        pid: process.pid,
+        carpeta: process.cwd(),
+        procesadores: CPU_CORES
+    }
+    console.log(datos);
+    res.send(datos)
+    logger.info('Usuario accedio a la página info')
+})
+
 
 // RUTA RANDOM
 function calcular(cant) {
@@ -202,6 +228,46 @@ app.get('/api/randoms', async (req, res) => {
     const result = await calcular(cant)
     res.json(result)
 })
+
+
+// LOG4JS **** LOGGEO
+log4js.configure({
+
+    appenders: {
+        myLoggerConsole: {type: "console"},
+        myLoggerFile: {type: "file", filename: "info.log"},
+        myLoggerFile2: {type: "file", filename: "info2.log"},
+        myLoggerFile3: {type: "file", filename: "warn.log"},
+        myLoggerFile4: {type: "file", filename: "error.log"}
+    },
+
+    categories: {
+        default: {appenders: ['myLoggerConsole'], level: 'trace'},
+        console: {appenders: ['myLoggerConsole'], level: 'debug'},
+        archivo: {appenders: ['myLoggerFile'], level: 'info'},
+        archivo2: {appenders: ['myLoggerFile3'], level: 'warn'},
+        archivo3: {appenders: ['myLoggerFile4', 'myLoggerFile2'], level: 'error'},
+    }
+})
+
+const logger = log4js.getLogger("archivo")
+const loggerWarn = log4js.getLogger("archivo2")
+const loggerError = log4js.getLogger("archivo3")
+
+logger.trace('Logger trace')
+logger.debug('Logger debug')
+logger.info('Logger info')
+logger.warn('Logger warn')
+logger.error('Logger error')
+logger.fatal('Logger fatal')
+
+
+// Manejo de rutas inexistentes
+app.get('*', ((req, res) => {
+    res.send({ status: "error: -2", description: `ruta ${req.url} método ${req.method} no implementada` });
+    loggerWarn.warn(`Ingreso a ruta no existente: ${req.url}`)
+}))
+
 
 // CLUSTER
 const CPU_CORES = os.cpus().length
