@@ -250,16 +250,16 @@ log4js.configure({
     }
 })
 
-const logger = log4js.getLogger("archivo")
-const loggerWarn = log4js.getLogger("archivo2")
-const loggerError = log4js.getLogger("archivo3")
+// const logger = log4js.getLogger("archivo")
+// const loggerWarn = log4js.getLogger("archivo2")
+// const loggerError = log4js.getLogger("archivo3")
 
-logger.trace('Logger trace')
-logger.debug('Logger debug')
-logger.info('Logger info')
-logger.warn('Logger warn')
-logger.error('Logger error')
-logger.fatal('Logger fatal')
+// logger.trace('Logger trace')
+// logger.debug('Logger debug')
+// logger.info('Logger info')
+// logger.warn('Logger warn')
+// logger.error('Logger error')
+// logger.fatal('Logger fatal')
 
 
 // Manejo de rutas inexistentes
