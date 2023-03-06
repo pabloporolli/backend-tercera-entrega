@@ -39,7 +39,7 @@ export default {
         }
     },
     fileSystem: {
-        path: process.env.FILESYSTEM
+        path: "contenedor.json"
     },
     session: {
         store: MongoStore.create({

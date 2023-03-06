@@ -52211,3 +52211,7 @@
 [2023-03-06T09:38:56.018] [WARN] archivo - Logger warn
 [2023-03-06T09:38:56.018] [ERROR] archivo - Logger error
 [2023-03-06T09:38:56.018] [FATAL] archivo - Logger fatal
+[2023-03-06T09:46:29.002] [INFO] archivo - Logger info
+[2023-03-06T09:46:29.003] [WARN] archivo - Logger warn
+[2023-03-06T09:46:29.003] [ERROR] archivo - Logger error
+[2023-03-06T09:46:29.003] [FATAL] archivo - Logger fatal
