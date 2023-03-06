@@ -52203,3 +52203,11 @@
 [2023-02-21T16:13:30.965] [INFO] archivo - Usuario accedio a la página info
 [2023-02-21T16:13:30.968] [INFO] archivo - Usuario accedio a la página info
 [2023-02-21T16:13:30.971] [INFO] archivo - Usuario accedio a la página info
+[2023-03-06T09:38:21.220] [INFO] archivo - Logger info
+[2023-03-06T09:38:21.224] [WARN] archivo - Logger warn
+[2023-03-06T09:38:21.224] [ERROR] archivo - Logger error
+[2023-03-06T09:38:21.224] [FATAL] archivo - Logger fatal
+[2023-03-06T09:38:56.017] [INFO] archivo - Logger info
+[2023-03-06T09:38:56.018] [WARN] archivo - Logger warn
+[2023-03-06T09:38:56.018] [ERROR] archivo - Logger error
+[2023-03-06T09:38:56.018] [FATAL] archivo - Logger fatal

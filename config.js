@@ -32,10 +32,10 @@ export default {
         client: 'mysql',
         connection: {
             host: '127.0.0.1',
-            user: process.env.MARIADB_USER,
-            password: process.env.MARIADB_PASSWORD,
-            database: process.env.MARIADB_DATABASE,
-            port: process.env.MARIADB_PORT
+            user: 'root',
+            password: 'root',
+            database: 'coderhouse_01',
+            port: 8889
         }
     },
     fileSystem: {
@@ -44,7 +44,7 @@ export default {
     session: {
         store: MongoStore.create({
             // local
-            mongoUrl: process.env.MONGO_URL
+            mongoUrl: "mongodb://localhost/sesionesDesafio12"
         }),
         secret: 'secret',
         resave: false,
