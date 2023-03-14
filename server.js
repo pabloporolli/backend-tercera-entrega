@@ -5,6 +5,9 @@ import mongoose from "mongoose";
 import * as model from './models/users.js'
 import { fork } from 'child_process'
 import parseArgs from 'minimist'
+import Contenedor from './DB/contenedores/ContenedorMongoDb.js';
+import log4js from 'log4js';
+import twilio from 'twilio';
 
 import config from './config.js'
 
@@ -18,7 +21,33 @@ import cluster from 'cluster'
 import os from 'os'
 
 import compression from 'compression';
-import log4js from 'log4js';
+
+// MAIL
+
+import { createTransport } from 'nodemailer';
+const TEST_MAIL = 'adrien33@ethereal.email';
+
+const transporter = createTransport({
+  host: 'smtp.ethereal.email',
+    port: 587,
+    auth: {
+        user: 'adrien33@ethereal.email',
+        pass: '9nAW7qaZufzJ7TGKN6'
+    }
+})
+
+// WHATSAPP
+const accountSid = 'ACa49230e31ef45b68f767fe2ab825beeb';
+const authToken = 'd64a483d26f321d291fe1090f1da309d';
+
+const client = twilio(accountSid, authToken);
+
+
+
+import {
+    productosDao as productosApi,
+    carritosDao as carritosApi
+} from './daos/index.js'
 
 const app = express()
 
@@ -41,11 +70,13 @@ const advancedOptions = {
 }
 
 // Passport-local
+let usuarioActual
 passport.use(new LocalStrategy(
     async function(email, password, done){
         console.log(`El usuario enviado desde l 45 es ${email} ${password}`)
         // Existe usuario devuelve el objeto del usuario (con ObjectId de Mongo)
         const existeUsuario = await model.usuarios.findOne({email: email})
+        usuarioActual = existeUsuario
         console.log('Existe usuario: ' + existeUsuario)
 
         if(!existeUsuario){
@@ -105,12 +136,12 @@ function isAuth(req,res,next){
 }
 
 // Mongo DB
-mongoose.set('strictQuery', false)
-const URL = 'mongodb://localhost:27017/usuarios'
-mongoose.connect(URL, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true
-})
+// mongoose.set('strictQuery', false)
+// const URL = 'mongodb://localhost:27017/usuarios'
+// mongoose.connect(URL, {
+//     useNewUrlParser: true,
+//     useUnifiedTopology: true
+// })
 
 app.get('/', isAuth, (req,res) =>{
     const nombre = req.session.passport.user.username
@@ -141,12 +172,16 @@ app.get('/register',(req,res)=>{
 })
 
 app.post('/register', async (req,res) =>{
-    let{ username, email, password } = req.body
+    let{ username, email, password, direccion, edad, telefono, foto } = req.body
     console.log(username, email, password)
     const newUser = {
         username: username,
         email: email,
-        password: await generateHashPassword(password)
+        password: await generateHashPassword(password),
+        direccion: direccion,
+        edad: edad,
+        telefono: telefono,
+        foto: foto
     }
     saveUser(newUser)
     .then((res)=>{
@@ -155,8 +190,11 @@ app.post('/register', async (req,res) =>{
     res.redirect('/login');
 })
 
-app.post('/login', passport.authenticate('local', {successRedirect:'/', failureRedirect: '/login-error'}))
 
+app.post('/login', passport.authenticate('local', {successRedirect:'/', failureRedirect: '/login-error'}),
+(req, res) => {
+})
+console.log("USUARIO ACTUAL: ", usuarioActual);
 async function saveUser(user){
     const userSave = await model.usuarios.insertMany(user)
     return userSave
@@ -173,6 +211,82 @@ app.get('/logout', (req, res) => {
     
 })
 
+// PRODUCTOS ------------------
+app.get('/productos', async (req, res) => {
+    const respuesta =  await productosApi.getAll()
+    res.json({respuesta})
+})
+
+// POST. Agrega un producto y devuelve su id
+app.post('/productos', async (req, res) => {
+    const prod = await req.body
+    console.log("prod: ", prod)
+    const producto = {
+        ...prod,
+    }
+    productosApi.save(producto)
+    .then( respuesta => {
+    res.render('formulario', {respuesta, registrado: true})
+    })
+})
+
+// CARRITOS -------------------
+// GET ALL
+app.get('/carrito', async (req, res) => {
+    const resp = await carritosApi.getAll()
+    try
+    {
+        const info = await transporter.sendMail({
+            from: 'Servidor Node.JS',
+            to: TEST_MAIL,
+            subject: 'Nuevo pedido',
+            html: `<h1 style="color: blue;"> Se realizado un nuevo pedido <span style="color: green;" Muchas gracias</span></h1> <div>${resp}</div>`
+          })
+        console.log(info);
+    }
+    catch (e)
+    {
+        console.log(e)
+    }
+
+    try
+    {
+        const message = await client.messages.create({
+        body: `Se ha realizado una nueva venta
+        ${resp}`,
+        from: '+13155993091',
+        to: '+542234497220'
+        });
+    console.log(message);
+    }
+    catch (e)
+    {
+        console.log(e);
+    }
+    res.send(resp)
+})
+
+// POST. Crea un carrito y asigna un id
+app.post('/carrito', async (req, res) => {
+    let timestamp = Date.now()
+    let productos = await req.body
+    let nuevoCarrito = {
+        items: productos,
+        cart_timestamp: timestamp
+    }
+    carritosApi.save(nuevoCarrito)
+    .then(id => res.send(`Carrito creado con el id ${id}`))
+})
+
+// DATOS PERSONALES
+let datosPersonales;
+app.get('/datos-personales', async (req, res) => {
+    console.log(usuarioActual);
+    datosPersonales = await model.usuarios.findOne({email: usuarioActual.email})
+    res.json(datosPersonales)
+    logger.info('Usuario accedio a la página de datos personales')
+})
+
 
 // PROCESS: Ruta info con datos del proceso
 app.get('/info', (req,res)=>{
@@ -187,7 +301,6 @@ app.get('/info', (req,res)=>{
         procesadores: CPU_CORES
     }
     res.send(datos)
-    logger.info('Usuario accedio a la página info')
 })
 
 // Ruta info bloqueante
@@ -204,7 +317,6 @@ app.get('/info-bloq', (req,res)=>{
     }
     console.log(datos);
     res.send(datos)
-    logger.info('Usuario accedio a la página info')
 })
 
 
@@ -230,7 +342,13 @@ app.get('/api/randoms', async (req, res) => {
 })
 
 
-// LOG4JS **** LOGGEO
+// Manejo de rutas inexistentes
+app.get('*', ((req, res) => {
+    res.send({ status: "error: -2", description: `ruta ${req.url} método ${req.method} no implementada` });
+}))
+
+
+// LOG4JS --------------
 log4js.configure({
 
     appenders: {
@@ -250,23 +368,17 @@ log4js.configure({
     }
 })
 
-// const logger = log4js.getLogger("archivo")
-// const loggerWarn = log4js.getLogger("archivo2")
-// const loggerError = log4js.getLogger("archivo3")
+const logger = log4js.getLogger("archivo")
+const loggerWarn = log4js.getLogger("archivo2")
+const loggerError = log4js.getLogger("archivo3")
 
-// logger.trace('Logger trace')
-// logger.debug('Logger debug')
-// logger.info('Logger info')
-// logger.warn('Logger warn')
-// logger.error('Logger error')
-// logger.fatal('Logger fatal')
+logger.trace('Logger trace')
+logger.debug('Logger debug')
+logger.info('Logger info')
+logger.warn('Logger warn')
+logger.error('Logger error')
+logger.fatal('Logger fatal')
 
-
-// Manejo de rutas inexistentes
-app.get('*', ((req, res) => {
-    res.send({ status: "error: -2", description: `ruta ${req.url} método ${req.method} no implementada` });
-    loggerWarn.warn(`Ingreso a ruta no existente: ${req.url}`)
-}))
 
 
 // CLUSTER
@@ -287,6 +399,4 @@ if (config.mode == 'CLUSTER' && cluster.isPrimary) {
         if (!err) console.log(`Servidor http escuchando en el puerto ${config.PORT} - PID: ${process.pid}`)
     })
 }
-
-
 

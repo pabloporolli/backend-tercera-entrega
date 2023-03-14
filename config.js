@@ -11,7 +11,7 @@ const argv = parseArgs(process.argv.slice(2), {
         m: 'mode'
     },
     default: {
-    port: 8080,
+    port: 8090,
     mode: 'FORK'
     }
 })
@@ -40,6 +40,15 @@ export default {
     },
     fileSystem: {
         path: "contenedor.json"
+    },
+    mongodb: {
+        cnxStr: 'mongodb://localhost:27017/usuarios',
+        options: {
+            useNewUrlParser: true,
+            useUnifiedTopology: true,
+            // useCreateIndex: true,
+            serverSelectionTimeoutMS: 5000,
+     }
     },
     session: {
         store: MongoStore.create({
